@@ -1,0 +1,278 @@
+```html
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarjimon va ovozli yordamchi</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .container {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px #00000030;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        p {
+            color: #555;
+        }
+
+        textarea, select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 16px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        textarea {
+            height: 130px;
+            resize: vertical;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            background: #5b5be2;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #4141bd;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        #natija {
+            min-height: 80px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f2f3ff;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+
+        #holat {
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>🌍 Aqlli tarjimon</h1>
+
+        <p>Matnni yozing:</p>
+
+        <textarea id="matn"
+            placeholder="Bu yerga matningizni yozing..."></textarea>
+
+        <p>Qaysi tildan tarjima qilamiz?</p>
+
+        <select id="manba">
+            <option value="auto">Tilni avtomatik aniqlash</option>
+            <option value="uz">O‘zbek tili</option>
+            <option value="en">Ingliz tili</option>
+            <option value="ru">Rus tili</option>
+        </select>
+
+        <p>Qaysi tilga tarjima qilamiz?</p>
+
+        <select id="maqsad">
+            <option value="en">Ingliz tili 🇬🇧</option>
+            <option value="uz">O‘zbek tili 🇺🇿</option>
+            <option value="ru">Rus tili 🇷🇺</option>
+        </select>
+
+        <div class="buttons">
+            <button id="tarjimaBtn">Tarjima qilish</button>
+            <button id="oqishBtn">🔊 O‘qish</button>
+        </div>
+
+        <p>Tarjima natijasi:</p>
+
+        <div id="natija" aria-live="polite">
+            Tarjima shu yerda chiqadi.
+        </div>
+
+        <p id="holat"></p>
+
+    </div>
+
+    <script>
+        const matn = document.getElementById("matn");
+        const manba = document.getElementById("manba");
+        const maqsad = document.getElementById("maqsad");
+        const natija = document.getElementById("natija");
+        const holat = document.getElementById("holat");
+        const tarjimaBtn = document.getElementById("tarjimaBtn");
+        const oqishBtn = document.getElementById("oqishBtn");
+
+        let tarjimaMatni = "";
+        let tarjimaTili = "en";
+
+        const tilNomlari = {
+            uz: "O‘zbek tili",
+            en: "Ingliz tili",
+            ru: "Rus tili"
+        };
+
+        async function tarjimaQil() {
+            const original = matn.value.trim();
+            const source = manba.value;
+            const target = maqsad.value;
+
+            if (!original) {
+                holat.textContent = "Avval matn yozing!";
+                matn.focus();
+                return;
+            }
+
+            if (source === target) {
+                holat.textContent = "Manba va tarjima tili bir xil. Boshqa tilni tanlang.";
+                return;
+            }
+
+            tarjimaBtn.disabled = true;
+            holat.textContent = "Tarjima qilinmoqda...";
+            natija.textContent = "";
+
+            try {
+                const pair = source === "auto"
+                    ? "autodetect|" + target
+                    : source + "|" + target;
+
+                const url =
+                    "https://api.mymemory.translated.net/get?q=" +
+                    encodeURIComponent(original) +
+                    "&langpair=" + encodeURIComponent(pair);
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error("Tarjima xizmati bilan bog‘lanib bo‘lmadi.");
+                }
+
+                const data = await response.json();
+
+                if (data.responseStatus !== 200 ||
+                    !data.responseData ||
+                    !data.responseData.translatedText) {
+                    throw new Error("Tarjima amalga oshmadi.");
+                }
+
+                tarjimaMatni = data.responseData.translatedText;
+                tarjimaTili = target;
+
+                natija.textContent = tarjimaMatni;
+                holat.textContent =
+                    "Tayyor! " + tilNomlari[target] + "ga tarjima qilindi.";
+
+            } catch (error) {
+                holat.textContent =
+                    "Xatolik: " + error.message +
+                    " Internetni tekshirib, qayta urinib ko‘ring.";
+            } finally {
+                tarjimaBtn.disabled = false;
+            }
+        }
+
+        function oqibBer() {
+            const text = tarjimaMatni || matn.value.trim();
+
+            if (!text) {
+                holat.textContent = "Avval matn yozing!";
+                return;
+            }
+
+            if (!("speechSynthesis" in window)) {
+                holat.textContent =
+                    "Brauzeringiz ovozli o‘qishni qo‘llab-quvvatlamaydi.";
+                return;
+            }
+
+            window.speechSynthesis.cancel();
+
+            const nutq = new SpeechSynthesisUtterance(text);
+
+            // Tarjima bo‘lmasa, foydalanuvchi tanlagan
+            // manba tilidan foydalanamiz.
+            nutq.lang = tarjimaMatni
+                ? tarjimaTili === "uz" ? "uz-UZ"
+                : tarjimaTili === "ru" ? "ru-RU"
+                : "en-US"
+                : manba.value === "auto" ? "en-US"
+                : manba.value === "uz" ? "uz-UZ"
+                : manba.value === "ru" ? "ru-RU"
+                : "en-US";
+
+            nutq.rate = 0.9;
+
+            nutq.onstart = function() {
+                holat.textContent = "Matn o‘qilmoqda...";
+            };
+
+            nutq.onend = function() {
+                holat.textContent = "O‘qish tugadi.";
+            };
+
+            nutq.onerror = function() {
+                holat.textContent =
+                    "Ovozli o‘qishda xatolik yuz berdi.";
+            };
+
+            window.speechSynthesis.speak(nutq);
+        }
+
+        tarjimaBtn.addEventListener("click", tarjimaQil);
+        oqishBtn.addEventListener("click", oqibBer);
+
+        matn.addEventListener("input", function() {
+            tarjimaMatni = "";
+        });
+    </script>
+
+</body>
+</html>
+```
